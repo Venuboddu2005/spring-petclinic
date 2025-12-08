@@ -2,87 +2,9 @@ pipeline {
     agent any
 
     environment {
-        // Testcontainers issues fix
         TESTCONTAINERS_RYUK_DISABLED = "true"
         TESTCONTAINERS_CHECKS_DISABLE = "true"
         SPRING_DOCKER_COMPOSE_SKIP_IN_TESTS = "true"
-
-        // Dynamically load Maven project info
-        PROJECT_VERSION = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
-        PROJECT_ARTIFACT = sh(script: "mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout", returnStdout: true).trim()
-
-        // Docker registry settings
-        REGISTRY_CREDENTIALS = "docker-hub-creds"
-        DOCKER_IMAGE = "venuboddu2005/${PROJECT_ARTIFACT}"
-    }
-
-    stages {
-
-        stage("Build Code") {
-            steps {
-                echo "📦 Building code..."
-                sh './mvnw clean package -DskipTests'
-            }
-        }
-
-        stage("Run Unit Tests") {
-            steps {
-                echo "🧪 Running Unit Tests..."
-                sh """
-                    ./mvnw test \
-                    -Dspring.docker.compose.skip.in-tests=true \
-                    -Dtest='*Tests,!*IntegrationTests,*Test'
-                """
-            }
-        }
-
-        stage("SonarQube Scan") {
-            steps {
-                echo "🔍 Running SonarQube Scan..."
-                script {
-                    withSonarQubeEnv('dev-sonar-01') {
-                        sh """
-                            sonar-scanner \
-                                -Dsonar.projectKey=${PROJECT_ARTIFACT} \
-                                -Dsonar.projectName=${PROJECT_ARTIFACT} \
-                                -Dsonar.projectVersion=${PROJECT_VERSION} \
-                                -Dsonar.sources=src \
-                                -Dsonar.java.binaries=target/classes \
-                                -Dsonar.sourceEncoding=UTF-8
-                        """
-                    }
-                }
-            }
-        }
-
-        stage("Sonar Quality Gate") {
-            steps {
-                echo "🚦 Checking Sonar Quality Gate..."
-                script {
-                    timeout(time: 3, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
-                        if (qg.status != "OK") {
-                            error "❌ Quality Gate Failed: ${qg.status}"
-                        }
-                    }
-                }
-            }pipeline {
-    agent any
-
-    environment {
-        PROJECT_VERSION = sh(script: "mvn help:evaluate -Dexpression=project.version -q -DforceStdout", returnStdout: true).trim()
-        PROJECT_ARTIFACT = sh(script: "mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout", returnStdout: true).trim()
-        PROJECT_GROUP = sh(script: "mvn help:evaluate -Dexpression=project.groupId -q -DforceStdout", returnStdout: true).trim()
-
-        TESTCONTAINERS_RYUK_DISABLED = "true"
-        TESTCONTAINERS_CHECKS_DISABLE = "true"
-        SPRING_DOCKER_COMPOSE_SKIP_IN_TESTS = "true"
-
-        REGISTRY_CREDENTIALS = "docker-hub-creds"
-        DOCKER_IMAGE = "venuboddu2005/${PROJECT_ARTIFACT}"
-
-        NEXUS_URL = "http://nexus:8081"
-        NEXUS_CREDS = "nexus-creds"
     }
 
     stages {
@@ -91,12 +13,11 @@ pipeline {
             steps {
                 sh """
                     ./mvnw clean package -DskipTests
-                    ls -lrt target/*.jar
                 """
             }
         }
 
-        stage("Run Unit Tests") {
+        stage("Run Unit Tests Only") {
             steps {
                 sh """
                     ./mvnw test \
@@ -112,9 +33,8 @@ pipeline {
                     withSonarQubeEnv('dev-sonar-01') {
                         sh """
                             sonar-scanner \
-                                -Dsonar.projectKey=${PROJECT_ARTIFACT} \
-                                -Dsonar.projectName=${PROJECT_ARTIFACT} \
-                                -Dsonar.projectVersion=${PROJECT_VERSION} \
+                                -Dsonar.projectKey=petclinic \
+                                -Dsonar.projectName=petclinic \
                                 -Dsonar.sources=src \
                                 -Dsonar.java.binaries=target/classes \
                                 -Dsonar.sourceEncoding=UTF-8
@@ -124,128 +44,17 @@ pipeline {
             }
         }
 
-        stage("Quality Gate") {
+        stage("Sonar Quality Gate") {
             steps {
                 script {
                     timeout(time: 3, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
-                        if (qg.status != "OK") {
+                        if (qg.status != 'OK') {
                             error "Quality Gate Failed: ${qg.status}"
                         }
                     }
                 }
             }
-        }
-
-        stage("Upload to Nexus") {
-            steps {
-                script {
-                    def JAR_PATH = "target/${PROJECT_ARTIFACT}-${PROJECT_VERSION}.jar"
-
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: "${NEXUS_URL}",
-                        groupId: "${PROJECT_GROUP}",
-                        version: "${PROJECT_VERSION}",
-                        repository: 'maven-snapshots',
-                        credentialsId: "${NEXUS_CREDS}",
-                        artifacts: [[
-                            artifactId: PROJECT_ARTIFACT,
-                            file: JAR_PATH,
-                            type: 'jar'
-                        ]]
-                    )
-                }
-            }
-        }
-
-        stage("Docker Build") {
-            steps {
-                sh "docker build -t ${DOCKER_IMAGE}:${PROJECT_VERSION} ."
-            }
-        }
-
-        stage("Docker Push") {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(credentialsId: REGISTRY_CREDENTIALS, usernameVariable: 'USER', passwordVariable: 'PASS')
-                    ]) {
-                        sh '''
-                            echo "$PASS" | docker login -u "$USER" --password-stdin
-                            docker push '"${DOCKER_IMAGE}"':'"${PROJECT_VERSION}"'
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage("Deploy to Dev Server") {
-            steps {
-                sh """
-                    docker rm -f petclinic || true
-                    docker pull ${DOCKER_IMAGE}:${PROJECT_VERSION}
-                    docker run -d --name petclinic -p 8080:8080 ${DOCKER_IMAGE}:${PROJECT_VERSION}
-                """
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "CI/CD Pipeline Completed Successfully!"
-        }
-        failure {
-            echo "CI/CD Pipeline Failed!"
-        }
-    }
-}
-
-        }
-
-        stage("Docker Build") {
-            steps {
-                echo "🐳 Building Docker Image..."
-                sh """
-                    docker build -t ${DOCKER_IMAGE}:${PROJECT_VERSION} .
-                """
-            }
-        }
-
-        stage("Docker Push") {
-            steps {
-                echo "📤 Pushing Docker Image..."
-                script {
-                    withCredentials([usernamePassword(credentialsId: REGISTRY_CREDENTIALS,
-                             usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                        sh '''
-                            echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin
-                            docker push '"${DOCKER_IMAGE}"':'"${PROJECT_VERSION}"'
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage("Deploy to Server") {
-            steps {
-                echo "🚀 Deploying Application..."
-                sh """
-                    docker rm -f petclinic || true
-                    docker pull ${DOCKER_IMAGE}:${PROJECT_VERSION}
-                    docker run -d --name petclinic -p 8080:8080 ${DOCKER_IMAGE}:${PROJECT_VERSION}
-                """
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "🎉 CI/CD Pipeline Completed Successfully!"
-        }
-        failure {
-            echo "❌ CI/CD Pipeline Failed!"
         }
     }
 }
