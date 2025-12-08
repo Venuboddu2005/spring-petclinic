@@ -1,15 +1,32 @@
 pipeline {
     agent any
 
+    environment {
+        TESTCONTAINERS_RYUK_DISABLED = "true"
+        TESTCONTAINERS_CHECKS_DISABLE = "true"
+    }
+
     stages {
-        stage("Build") {
+
+        stage("Checkout Code") {
             steps {
-                echo "Building..."
-                stage("Run-Unit-Tests") { 
-                    steps {
-                       sh 'mvn test'
-                    }
-                }
+                git url: 'https://github.com/Venuboddu2005/spring-petclinic.git', branch: 'main'
+            }
+        }
+
+        stage("Build Code") {
+            steps {
+                sh """
+                    ./mvnw clean package -DskipTests
+                """
+            }
+        }
+
+        stage("Run-Unit-Tests") {
+            steps {
+                sh """
+                    ./mvnw test
+                """
             }
         }
     }
