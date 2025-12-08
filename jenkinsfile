@@ -13,6 +13,16 @@ pipeline {
                     ./mvnw package -DskipTests
                     ls -lrt target/*.jar
                 """
+
+               stage("Run-Unit-Tests"){ 
+             steps {
+                 sh """
+                     ./mvnw test
+
+                 """
+             }
+            }
+ 
             }
         }
     }
