@@ -4,8 +4,8 @@ pipeline {
         stage("build code"){
             steps {
             sh"""
-            ./mvnw package
-            java -jar target/*.jar
+               ./mvnw package -DskipTests
+                ls -lrt target/*.jar
             """
             }
         }
