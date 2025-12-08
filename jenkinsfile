@@ -5,7 +5,7 @@ pipeline {
             steps {
             sh"""
             ./mvnw package
-            ls -lrtjava -jar target/*.jar
+            java -jar target/*.jar
             """
             }
         }
