@@ -4,16 +4,12 @@ pipeline {
     environment {
         TESTCONTAINERS_RYUK_DISABLED = "true"
         TESTCONTAINERS_CHECKS_DISABLE = "true"
+        SPRING_DOCKER_COMPOSE_SKIP_IN_TESTS = "true"
     }
 
     stages {
-
-        stage("Checkout Code") {
-            steps {
-                git url: 'https://github.com/Venuboddu2005/spring-petclinic.git', branch: 'main'
-            }
-        }
-
+                    
+            
         stage("Build Code") {
             steps {
                 sh """
@@ -25,7 +21,7 @@ pipeline {
         stage("Run-Unit-Tests") {
             steps {
                 sh """
-                    ./mvnw test
+                    ./mvnw test -Dspring.docker.compose.skip.in-tests=true -DskipITs
                 """
             }
         }
