@@ -1,12 +1,18 @@
 pipeline {
     agent any
-    stages{
-        stage("build code"){
+
+    environment {
+        TESTCONTAINERS_RYUK_DISABLED = "true"
+        TESTCONTAINERS_CHECKS_DISABLE = "true"
+    }
+
+    stages {
+        stage("build code") {
             steps {
-            sh"""
-               ./mvnw package -DskipTests
-                ls -lrt target/*.jar
-            """
+                sh """
+                    ./mvnw package -DskipTests
+                    ls -lrt target/*.jar
+                """
             }
         }
     }
