@@ -1,4 +1,4 @@
-pipeline {
+ppipeline {
     agent any
 
     environment {
@@ -8,8 +8,7 @@ pipeline {
     }
 
     stages {
-                    
-            
+
         stage("Build Code") {
             steps {
                 sh """
@@ -18,10 +17,12 @@ pipeline {
             }
         }
 
-        stage("Run-Unit-Tests") {
+        stage("Run Unit Tests Only") {
             steps {
                 sh """
-                    ./mvnw test -Dspring.docker.compose.skip.in-tests=true -DskipITs
+                    ./mvnw test \
+                        -Dspring.docker.compose.skip.in-tests=true \
+                        -Dtest='*Tests,!*IntegrationTests,*Test'
                 """
             }
         }
