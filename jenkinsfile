@@ -57,30 +57,32 @@ pipeline {
             }
         }
 
-        stage("Upload Artifact to Nexus") {
-            steps {
-                script {
-                    nexusArtifactUploader(
-                        nexusVersion: 'nexus3',
-                        protocol: 'http',
-                        nexusUrl: 'nexus:8081',
-                        groupId: 'com.example.petclinic',
+       stage("Upload-Artifacts-Nexus") {
+    steps {
+        script {
+            nexusArtifactUploader(
+                nexusVersion: 'nexus3',
+                protocol: 'http',
+                nexusUrl: 'http://nexus:8081',
+                repository: 'maven-snapshots',
+                credentialsId: 'nexus-creds',
+
+                // From pom.xml
+                groupId: 'org.springframework.samples',
+                version: '4.0.0-SNAPSHOT',
+
+                artifacts: [
+                    [
                         artifactId: 'spring-petclinic',
-                        version: '4.0.0-SNAPSHOT',
-                        repository: 'maven-snapshots',
-                        credentialsId: 'nexus-creds',
-                        artifacts: [
-                            [
-                                classifier: '',
-                                file: 'target/spring-petclinic-4.0.0-SNAPSHOT.jar',
-                                type: 'jar'
-                            ]
-                        ]
-                    )
-                }
-            }
+                        classifier: '',
+                        file: 'target/spring-petclinic-4.0.0-SNAPSHOT.jar',
+                        type: 'jar'
+                    ]
+                ]
+            )
         }
+    }
+}
 
-    }  // <-- closes stages
-
-}  // <-- closes pipeline
+    }  
+}
