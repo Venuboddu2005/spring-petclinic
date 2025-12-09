@@ -60,21 +60,19 @@ pipeline {
         stage("Upload Artifact to Nexus") {
             steps {
                 script {
-                    sh "ls -lrt target"  // Debug: Check jar name
-
                     nexusArtifactUploader(
                         nexusVersion: 'nexus3',
                         protocol: 'http',
                         nexusUrl: 'nexus:8081',
                         groupId: 'com.example.petclinic',
-                        version: '1.0.0-SNAPSHOT',
+                        artifactId: 'spring-petclinic',
+                        version: '4.0.0-SNAPSHOT',
                         repository: 'maven-snapshots',
                         credentialsId: 'nexus-creds',
                         artifacts: [
                             [
-                                artifactId: 'petclinic',
                                 classifier: '',
-                                file: 'target/*.jar',
+                                file: 'target/spring-petclinic-4.0.0-SNAPSHOT.jar',
                                 type: 'jar'
                             ]
                         ]
@@ -83,6 +81,6 @@ pipeline {
             }
         }
 
-    }  // <-- CLOSE stages
+    }  // <-- closes stages
 
-}  // <-- CLOSE pipeline
+}  // <-- closes pipeline
