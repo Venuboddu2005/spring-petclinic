@@ -30,7 +30,7 @@ pipeline {
         stage("Sonar Scan") {
             steps {
                 script {
-                    withSonarQubeEnv('dev-sonar-01') {
+                    withSonarQubeEnv('sonar-server-01'){
                         sh """
                             sonar-scanner \
                                 -Dsonar.projectKey=petclinic \
