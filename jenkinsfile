@@ -63,11 +63,10 @@ pipeline {
             nexusArtifactUploader(
                 nexusVersion: 'nexus3',
                 protocol: 'http',
-                nexusUrl: 'http://nexus:8081',
+                nexusUrl: 'nexus:8081',   // FIXED
                 repository: 'maven-snapshots',
                 credentialsId: 'nexus-creds',
 
-                // From pom.xml
                 groupId: 'org.springframework.samples',
                 version: '4.0.0-SNAPSHOT',
 
@@ -84,5 +83,7 @@ pipeline {
     }
 }
 
-    }  
+    }
+   
+  
 }
